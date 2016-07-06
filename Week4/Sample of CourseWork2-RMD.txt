@@ -1,0 +1,92 @@
+storm <- read.csv("C:/Data Science/05. Reproducible Research/Data/repdata%2Fdata%2FStormData.csv")
+
+head(storm)
+
+2.3.2 Extracting the required data
+
+This dataset consists of lot of information most of which is not required for our present study. So, here is the code to extract the required data for health and economic impact analysis against weather.
+
+# Extracting the required data for health and economic impact analysis against weather
+
+event <- c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", 
+           "CROPDMGEXP")
+data <- storm[event]
+
+###2.3.3 Finding property damage
+# Finding the property damage exponent and levels
+unique(data$PROPDMGEXP)
+
+# Assigning values for the property exponent data 
+data$PROPEXP[data$PROPDMGEXP == "K"] <- 1000
+data$PROPEXP[data$PROPDMGEXP == "M"] <- 1e+06
+data$PROPEXP[data$PROPDMGEXP == ""] <- 1
+data$PROPEXP[data$PROPDMGEXP == "B"] <- 1e+09
+data$PROPEXP[data$PROPDMGEXP == "m"] <- 1e+06
+data$PROPEXP[data$PROPDMGEXP == "0"] <- 1
+data$PROPEXP[data$PROPDMGEXP == "5"] <- 1e+05
+data$PROPEXP[data$PROPDMGEXP == "6"] <- 1e+06
+data$PROPEXP[data$PROPDMGEXP == "4"] <- 10000
+data$PROPEXP[data$PROPDMGEXP == "2"] <- 100
+data$PROPEXP[data$PROPDMGEXP == "3"] <- 1000
+data$PROPEXP[data$PROPDMGEXP == "h"] <- 100
+data$PROPEXP[data$PROPDMGEXP == "7"] <- 1e+07
+data$PROPEXP[data$PROPDMGEXP == "H"] <- 100
+data$PROPEXP[data$PROPDMGEXP == "1"] <- 10
+data$PROPEXP[data$PROPDMGEXP == "8"] <- 1e+08
+# Assigning '0' to invalid exponent data
+data$PROPEXP[data$PROPDMGEXP == "+"] <- 0
+data$PROPEXP[data$PROPDMGEXP == "-"] <- 0
+data$PROPEXP[data$PROPDMGEXP == "?"] <- 0
+# Calculating the property damage value
+data$PROPDMGVAL <- data$PROPDMG * data$PROPEXP
+
+###2.3.4 Finding crop damage
+# Exploring the crop exponent data
+unique(data$CROPDMGEXP)
+
+# Assigning values for the crop exponent data 
+data$CROPEXP[data$CROPDMGEXP == "M"] <- 1e+06
+data$CROPEXP[data$CROPDMGEXP == "K"] <- 1000
+data$CROPEXP[data$CROPDMGEXP == "m"] <- 1e+06
+data$CROPEXP[data$CROPDMGEXP == "B"] <- 1e+09
+data$CROPEXP[data$CROPDMGEXP == "0"] <- 1
+data$CROPEXP[data$CROPDMGEXP == "k"] <- 1000
+data$CROPEXP[data$CROPDMGEXP == "2"] <- 100
+data$CROPEXP[data$CROPDMGEXP == ""] <- 1
+# Assigning '0' to invalid exponent data
+data$CROPEXP[data$CROPDMGEXP == "?"] <- 0
+# calculating the crop damage value
+data$CROPDMGVAL <- data$CROPDMG * data$CROPEXP
+
+###2.3.5 Finding totals of each incident by event type.
+# Totalling the data by event
+fatal <- aggregate(FATALITIES ~ EVTYPE, data, FUN = sum)
+injury <- aggregate(INJURIES ~ EVTYPE, data, FUN = sum)
+propdmg <- aggregate(PROPDMGVAL ~ EVTYPE, data, FUN = sum)
+cropdmg <- aggregate(CROPDMGVAL ~ EVTYPE, data, FUN = sum)
+
+
+2.3.6 Plotting events with highest fatalities and highest injuries.
+# Listing  events with highest fatalities
+fatal8 <- fatal[order(-fatal$FATALITIES), ][1:8, ]
+
+# Listing events with highest injuries
+injury8 <- injury[order(-injury$INJURIES), ][1:8, ]
+
+par(mfrow = c(1, 2), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(fatal8$FATALITIES, las = 3, names.arg = fatal8$EVTYPE, main = "Events with Highest Fatalities", ylab = "Number of fatalities", col = "light blue")
+barplot(injury8$INJURIES, las = 3, names.arg = injury8$EVTYPE, main = "Events with Highest Injuries", ylab = "Number of injuries", col = "light blue")
+
+
+###2.3.7 Plotting events with highest Property damage and highest crop damage.
+# Finding events with highest property damage
+propdmg8 <- propdmg[order(-propdmg$PROPDMGVAL), ][1:8, ]
+# Finding events with highest crop damage
+cropdmg8 <- cropdmg[order(-cropdmg$CROPDMGVAL), ][1:8, ]
+par(mfrow = c(1, 2), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(propdmg8$PROPDMGVAL/(10^9), las = 3, names.arg = propdmg8$EVTYPE, 
+        main = "Events with Highest Property Damages", ylab = "Damage Cost ($ billions)", 
+        col = "lightblue")
+barplot(cropdmg8$CROPDMGVAL/(10^9), las = 3, names.arg = cropdmg8$EVTYPE, 
+        main = "Events With Highest Crop Damages", ylab = "Damage Cost ($ billions)", 
+        col = "lightblue")

@@ -1,0 +1,227 @@
+---
+output: 
+  html_document: 
+    keep_md: yes
+---
+#Reproducible Research: Peer assessment 1
+
+##Introduction
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+The data for this assignment can be downloaded from the course web site:
+
+Dataset: Activity monitoring data [52K]
+https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip
+
+The variables included in this dataset are:
+
+steps: Number of steps taking in a 5-minute interval (missing values are coded as NA)
+date: The date on which the measurement was taken in YYYY-MM-DD format
+interval: Identifier for the 5-minute interval in which measurement was taken
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+
+### Set the Global options
+Throughout this report when writing code chunks in the R markdown document, always use echo = TRUE so that someone else will be able to read the code.
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+###Load required libraries
+```{r}
+	library(lattice)
+	library(knitr)
+```	
+
+###1. Code for reading in the dataset and/or processing the data
+```{r}
+setwd("C:/Data Science/Reproducible Research")
+```
+		
+a. set the filename
+```{r setup, include=FALSE}
+    Zip_file <- "repdata%2Fdata%2Factivity.zip"
+    filename <- "activity.csv"
+```
+		
+b. Make sure data folder exists. Else create the folder named "Data"
+```{r}
+	if(!file.exists("Data")) { 
+	dir.create("Data")
+	}
+
+	setwd("C:/Data Science/Reproducible Research/Data")
+```
+
+c. Download the dataset:
+```{r}
+	if (!file.exists(Zip_file)){
+	fileURL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+	download.file(fileURL, Zip_file, mode="wb")
+	} 
+```
+
+d. unzip the dataset:
+```{r}
+	if (!file.exists(filename)) {
+	unzip(Zip_file) 
+	}
+```
+
+e. reading in the dataset
+```{r}
+	activity <- read.csv("activity.csv", colClasses = c("numeric", "character", "numeric"))
+        storm_all <- read.csv("FStormData.csv", sep =  ",")
+
+	head(activity)			  
+
+	str(activity)
+		head(storm_all)	
+```
+
+f. format the date	
+```{r}
+	activity$date <- as.Date(activity$date, "%Y-%m-%d")
+
+	str(activity)
+```
+	
+###2. Histogram of the total number of steps taken each day
+ a. Calculate the total number of steps taken each day
+```{r}
+ 	tot_steps <- aggregate(steps ~ date, data = activity, sum, na.rm = TRUE)
+ 	
+ 	str(tot_steps)
+ 	
+ 	summary(tot_steps)
+```
+ 	
+ b. Make a histogram of the total number of steps taken each day
+```{r}
+ 	hist(tot_steps$steps, main = "Total number of steps taken each day", xlab = "day",ylab = "Frequency", col = "green")
+```
+
+###3. Mean and median number of steps taken each day
+```{r}
+		mean(tot_steps$steps)
+		
+		median(tot_steps$steps)
+```
+		
+###4. Time series plot of the average number of steps taken
+a. Calculate Time series plot of the average number of steps taken
+```{r}
+	steps <- rep(NA, 61)
+	day <- rep("NA", 61)
+	sum_steps <- tapply(activity$steps, activity$date, sum, na.rm = TRUE)
+	length(sum_steps)
+	
+	for (i in 1:length(sum_steps)) {
+			steps[i] <- sum_steps[[i]]
+			day[i] <- names(sum_steps)[i]
+	}
+	
+	activity_df <- data.frame(day, steps)
+	head(activity_df)
+	
+	hist(activity_df$steps, main = "Total steps by day", xlab = "day", col = "green")
+	
+	time_series <- tapply(activity$steps, activity$interval, mean, na.rm = TRUE)
+```
+	
+b. Plot Time series plot of the average number of steps taken
+```{r}
+	plot(row.names(time_series), time_series, type = "l", xlab = "5-min interval", ylab = "Average steps", main = "Time Series of Average number of steps taken", col = "blue")
+```
+			
+###5. The 5-minute interval that, on average, contains the maximum number of steps
+```{r}
+	average_steps <- aggregate(steps ~ interval, data = activity, FUN = mean)
+	max_interval <- average_steps[which.max(average_steps$steps),]
+	max_interval 
+```
+		
+###6. Code to describe and show a strategy for imputing missing data
+	a. Total number of missing values:
+```{r}
+	missing_activity <- sum(is.na(activity))
+	missing_activity
+```
+		
+	b. Devise a strategy for filling in all of the missing values in the dataset
+```{r}
+	fillNA <- numeric()
+	for (i in 1:nrow(activity)) {
+		obs <- activity[i, ]
+		if (is.na(obs$steps)) {
+			steps <- subset(average_steps, interval == obs$interval)$steps
+		} else {
+			steps <- obs$steps
+		}
+		fillNA <- c(fillNA, steps)
+	}
+```
+		
+	c. Make sure there is no more missing values	
+		*sum(is.na(No_missing_activity$steps <- fillNA)) = 0*
+```{r}
+	No_missing_activity <- activity
+	No_missing_activity$steps <- fillNA
+	sum(is.na(No_missing_activity$steps))
+```
+		
+###7. Histogram of the total number of steps taken each day after missing values are imputed
+	a. Calculate total number of steps taken each day after missing values are imputed
+```{r}
+		tot_steps2 <- aggregate(steps ~ date, data = No_missing_activity, sum, na.rm = TRUE)
+		str(tot_steps2)
+		summary(tot_steps2)
+```
+	b. plotting the histogram
+```{r}
+		hist(tot_steps2$steps, main = "Total number of steps taken each day (No missing values)", xlab = "day",ylab = "Frequency", col = "blue")
+```
+		
+	c. Calculate and report the mean and median total number of steps taken per day.
+```{r}
+		mean(tot_steps2$steps)
+		median(tot_steps2$steps)
+```
+			
+###8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+ a. Subset the day into two levels - weekends (Saturday and Sunday) and weekdays (Monday through Friday).
+```{r}
+ 	day <- weekdays(activity$date)
+ 	daylevel <- vector()
+ 	for (i in 1:nrow(activity)) {
+ 		if (day[i] == "Saturday") {
+ 			daylevel[i] <- "Weekend"
+ 		} else if (day[i] == "Sunday") {
+ 			daylevel[i] <- "Weekend"
+ 		} else {
+ 			daylevel[i] <- "Weekday"
+ 		}
+ 	}
+```
+ b. create a new column.	
+```{r}
+ 	str(activity)
+ 	activity$daylevel <- daylevel
+ 	str(activity)
+ 	activity$daylevel <- factor(activity$daylevel)
+ 	str(activity)
+```
+ 	
+ c. Tabulate the average steps per interval for each data set.	
+```{r}
+        avg_steps_interval <- aggregate(steps ~ interval + daylevel, data = activity, mean)
+ 	str(avg_steps_interval)
+ 	names(avg_steps_interval) <- c("interval", "daylevel", "steps")
+```
+ 	
+ d. Plot the two data sets side by side for comparison.
+```{r}
+ 	xyplot(steps ~ interval | daylevel, avg_steps_interval, type = "l", layout = c(1, 2), main = "Average number of steps taken per 5-minute interval", xlab = "Interval", ylab = "Average number of steps")
+```
